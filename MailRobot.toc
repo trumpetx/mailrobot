@@ -1,0 +1,21 @@
+## Interface: 11304
+## Version: v1.0.0
+## Title: Mail Robot
+## Notes: Get Mail -> Do EPGP Stuff
+## Author: TrumpetX
+## SavedVariables: MailRobotDB
+## DefaultState: Enabled
+## LoadOnDemand: 0
+## X-Credits:
+## X-Category: Games
+## X-License: Apache-2.0
+## X-Localizations: enUS
+## X-Curse-Project-ID:
+## X-WoWI-ID:
+## Dependencies: EPGP-Classic
+
+MailRobot.xml
+locales.xml
+
+LuaUtils.lua
+MailRobot.lua
