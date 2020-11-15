@@ -96,7 +96,7 @@ end
 
 function MR:RemoveItem(a, args)
   local item = self:GetArgs(args, 1)
-  self:AddItem(a, item .. " 0")
+  self:AddItem(a, item .. " -1")
 end
 
 function MR:ValidateAddItem(a, args)
@@ -112,7 +112,7 @@ function MR:ValidateAddItem(a, args)
 end
 
 function MR:_AddItem(itemName, itemLink, amount)
-  if tonumber(amount) > 0 then
+  if tonumber(amount) >= 0 then
     self.db.profile.itemValues[itemName] = amount
     self:Print("Added " .. itemLink .. " to the database (" .. amount .. ")")
     return true
@@ -201,6 +201,7 @@ function MR:MAIL_INBOX_UPDATE(event, ...)
   scroll:SetLayout("Flow")
   scrollcontainer:AddChild(scroll)
   local noValueItems = {}
+  local buttonGroups = {}
   for i=1, numItems do
     local packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, hasItem, wasRead, wasReturned, _ = GetInboxHeaderInfo(i);
     if hasItem and sender and not wasReturned then
@@ -216,8 +217,15 @@ function MR:MAIL_INBOX_UPDATE(event, ...)
             local amount = amountPerItem * count
             local epgpSender = EPGP:GetFullCharacterName(sender)
             if EPGP:CanIncEPBy(name, amount) then
+              local buttonGroup = buttonGroups[sender]
+              if buttonGroup == nil then
+                buttonGroup = AceGUI:Create("InlineGroup")
+                buttonGroup:SetTitle(sender)
+                buttonGroups[sender] = buttonGroup
+                scroll:AddChild(buttonGroup)
+              end
               local button = AceGUI:Create("Button")
-              button:SetText(L["ApplyButton"](amount, sender, count, name))
+              button:SetText(L["ApplyButton"](amount, count, name))
               button:SetFullWidth(true)
               button:SetCallback("OnClick", function()
                 if EPGP:IncEPBy(epgpSender, name, amount, false, false) then
@@ -227,7 +235,7 @@ function MR:MAIL_INBOX_UPDATE(event, ...)
                   self:Debug("Unable to increase " .. sender .. "'s EP by " .. amount .. " for recipt of " .. count .. " " .. link)
                 end
               end)
-              scroll:AddChild(button)
+              buttonGroup:AddChild(button)
             else
               self:Debug("Not able to apply EP (edit officer notes?)")
             end

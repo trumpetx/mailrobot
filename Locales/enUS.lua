@@ -12,8 +12,8 @@ L["mailrobot"] = true
 L["AddonEnabled"] = function(X,Y)
 	return 'version ' .. X .. ' by |cFF00FF00' .. Y .. '|r loaded'
 end
-L["ApplyButton"] = function(amount, sender, count, name)
-	return amount .. " EP to " .. sender .. " for " .. count .. " " .. name
+L["ApplyButton"] = function(amount, count, name)
+	return amount .. " EP for " .. count .. " " .. name
 end
 L["Add a item"] = true
 L["Adds a item value to the database"] = true
