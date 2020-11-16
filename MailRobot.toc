@@ -7,11 +7,11 @@
 ## DefaultState: Enabled
 ## LoadOnDemand: 0
 ## X-Credits:
-## X-Category: Games
+## X-Category: Utilities
 ## X-License: Apache-2.0
 ## X-Localizations: enUS
-## X-Curse-Project-ID:
-## X-WoWI-ID:
+## X-Curse-Project-ID: 419964
+## X-WoWI-ID: 25774
 ## Dependencies: EPGP-Classic
 
 MailRobot.xml
