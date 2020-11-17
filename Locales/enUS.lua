@@ -25,3 +25,7 @@ L["Remove a item & value from the database"] = true
 L["Enabled"] = true
 L["Toggles the Mail Robot popup"] = true
 L["MailRobot window "] = true
+L["Unknown Item Values"] = true
+L["Reset Item Values"] = true
+L["Removes all values assigned to items"] = true
+L["Item values reset!"] = true

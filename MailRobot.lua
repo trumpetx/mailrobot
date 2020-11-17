@@ -48,6 +48,12 @@ local options = {
       func = "ListItems",
       guiHidden = true,
     },
+    removeAll = {
+      type = "execute",
+      name = L["Reset Item Values"],
+      desc = L["Removes all values assigned to items"],
+      func = "RemoveAll",
+    }
   },
 }
 
@@ -94,6 +100,12 @@ function MR:ValidateRemoveItem(a, args)
   return true
 end
 
+function MR:RemoveAll()
+  self:CloseWindow()
+  self.db.profile.itemValues = {}
+  self:Print(L["Item values reset!"])
+end
+
 function MR:RemoveItem(a, args)
   local item = self:GetArgs(args, 1)
   self:AddItem(a, item .. " -1")
@@ -134,6 +146,7 @@ function MR:OnEnable()
   self:Print(L["AddonEnabled"](GetAddOnMetadata("MailRobot", "Version"), GetAddOnMetadata("MailRobot", "Author")))
   self.firstOpen = true
   self.isShown = false
+  self.canIncEp = false
   LibStub("AceConfig-3.0"):RegisterOptionsTable("MailRobot", options)
   self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("MailRobot", L["Mail Robot"])
   self:RegisterChatCommand(L["mr"], "ChatCommand")
@@ -167,26 +180,54 @@ function MR:ChatCommand(input)
   end
 end
 
-function MR:MAIL_CLOSED(event, ...)
-  self:Debug(event)
+function MR:CloseWindow()
   if self.frame ~= nil then
     AceGUI:Release(self.frame)
     self.frame = nil
   end
 end
 
+function MR:MAIL_CLOSED(event, ...)
+  self:Debug(event)
+  self:CloseWindow()
+end
+
 function MR:MAIL_INBOX_UPDATE(event, ...)
   self:Debug(event)
-  if self.frame ~= nil or not self.db.profile.enabled then
-    self:Debug("Window already open or window disabled")
+  if not self.db.profile.enabled then
+    self:Debug("Window disabled")
     return
   end
-  local numItems, totalItems = GetInboxNumItems()
-  self:Debug("numItems=" .. numItems .. ", totalItems=" .. totalItems)
-  if self.frame ~= nil then
-    AceGUI:Release(self.frame)
-    self.frame = nil
+
+  if not self.canIncEp then
+    -- Once you can edit, you can always edit (not technically true, but EPGP will return false whlie reloading sometimes)
+    self.canIncEp = EPGP:CanIncEPBy("test", 1)
   end
+
+  if not self.canIncEp then
+    self:Debug("Unable to edit EPGP, supressing window popup")
+    return
+  end
+
+  if self.frame == nil then
+    self:CreateWindow()
+  else
+    local numItems, totalItems = GetInboxNumItems()
+    if numItems == 0 then
+      self:CloseWindow()
+    else
+      self:UpdateWindow(numItems, totalItems)
+    end
+  end
+end
+
+function MR:CreateWindow()
+  local numItems, totalItems = GetInboxNumItems()
+  if numItems == 0 then
+    self:Debug("No mail items, not creating window")
+    return
+  end
+
   self.frame = AceGUI:Create("Frame")
   self.frame:SetWidth(300)
   self.frame:SetTitle(L["Mail Robot"])
@@ -197,18 +238,29 @@ function MR:MAIL_INBOX_UPDATE(event, ...)
   scrollcontainer:SetFullHeight(true)
   scrollcontainer:SetLayout("Fill")
   self.frame:AddChild(scrollcontainer)
-  local scroll = AceGUI:Create("ScrollFrame")
-  scroll:SetLayout("Flow")
-  scrollcontainer:AddChild(scroll)
+  local scrollFrame = AceGUI:Create("ScrollFrame")
+  scrollFrame:SetLayout("Flow")
+  scrollcontainer:AddChild(scrollFrame)
+  self.frame.scrollFrame = scrollFrame
+  self:UpdateWindow(numItems, totalItems)
+end
+
+function MR:UpdateWindow(numItems, totalItems)
+  local scrollFrame = self.frame.scrollFrame
+  scrollFrame:ReleaseChildren()
   local noValueItems = {}
   local buttonGroups = {}
-  for i=1, numItems do
-    local packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, hasItem, wasRead, wasReturned, _ = GetInboxHeaderInfo(i);
+  --
+  -- Cycle through the mail and create buttons (grouped by sender name) where the applicable EP would be > 0
+  --
+  self:Debug("numItems=" .. numItems .. ", totalItems=" .. totalItems)
+  for mailboxIndex=1, numItems do
+    local packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, hasItem, wasRead, wasReturned, _ = GetInboxHeaderInfo(mailboxIndex);
     if hasItem and sender and not wasReturned then
-      for j=1, ATTACHMENTS_MAX_RECEIVE do
-        local link = GetInboxItemLink(i, j)
+      for mailIndex=1, ATTACHMENTS_MAX_RECEIVE do
+        local link = GetInboxItemLink(mailboxIndex, mailIndex)
         if link then
-          local name, itemId, texture, count, quality, canUse = GetInboxItem(i, j)
+          local name, itemId, texture, count, quality, canUse = GetInboxItem(mailboxIndex, mailIndex)
           local amountPerItem = self.db.profile.itemValues[name]
           if amountPerItem == nil then
             noValueItems[name] = link;
@@ -216,28 +268,29 @@ function MR:MAIL_INBOX_UPDATE(event, ...)
             self:Debug(name .. " has a value of " .. amountPerItem)
             local amount = amountPerItem * count
             local epgpSender = EPGP:GetFullCharacterName(sender)
-            if EPGP:CanIncEPBy(name, amount) then
+            if amount > 0 then
               local buttonGroup = buttonGroups[sender]
               if buttonGroup == nil then
                 buttonGroup = AceGUI:Create("InlineGroup")
                 buttonGroup:SetTitle(sender)
                 buttonGroups[sender] = buttonGroup
-                scroll:AddChild(buttonGroup)
+                scrollFrame:AddChild(buttonGroup)
               end
               local button = AceGUI:Create("Button")
               button:SetText(L["ApplyButton"](amount, count, name))
               button:SetFullWidth(true)
               button:SetCallback("OnClick", function()
                 if EPGP:IncEPBy(epgpSender, name, amount, false, false) then
-                  self:Debug("Increased " .. sender .. "'s EP by " .. amount .. " for recipt of " .. count .. " " .. link)
+                  self:Debug("Increased " .. sender .. "'s EP by " .. amount .. " for receipt of " .. count .. " " .. link)
                   button:SetDisabled(true)
+                  TakeInboxItem(mailboxIndex, mailIndex)
                 else
-                  self:Debug("Unable to increase " .. sender .. "'s EP by " .. amount .. " for recipt of " .. count .. " " .. link)
+                  self:Debug("Unable to increase " .. sender .. "'s EP by " .. amount .. " for receipt of " .. count .. " " .. link)
                 end
               end)
               buttonGroup:AddChild(button)
             else
-              self:Debug("Not able to apply EP (edit officer notes?)")
+              self:Debug("Value of " .. count .. "x" .. name .. " is 0")
             end
           end
         end
@@ -248,24 +301,30 @@ function MR:MAIL_INBOX_UPDATE(event, ...)
   --
   -- Add in inputs for No EP value
   --
-  for item,link in pairs(noValueItems) do
-    local editBox = AceGUI:Create("EditBox")
-    editBox:SetText("")
-    editBox:SetLabel(link)
-    editBox:DisableButton(false)
-    editBox:SetCallback("OnTextChanged", function(_, _, txt)
-      if txt == nil then return end
-      local match = string.match(txt, '[0-9]*')
-      if match ~= txt then
-        editBox:SetText(match)
-      end
-    end)
-    editBox:SetCallback("OnEnterPressed", function(_, _, amount)
-      if MR:_AddItem(item, link, amount) then
-        editBox:SetDisabled(true)
-      end
-    end)
-    scroll:AddChild(editBox)
+  if next(noValueItems) ~= nil then
+    local inputGroup = AceGUI:Create("InlineGroup")
+    inputGroup:SetTitle(L["Unknown Item Values"])
+    for item,link in pairs(noValueItems) do
+      local editBox = AceGUI:Create("EditBox")
+      editBox:SetText("")
+      editBox:SetLabel(link)
+      editBox:DisableButton(false)
+      editBox:SetCallback("OnTextChanged", function(_, _, txt)
+        if txt == nil then return end
+        local match = string.match(txt, '[0-9]*')
+        if match ~= txt then
+          editBox:SetText(match)
+        end
+      end)
+      editBox:SetCallback("OnEnterPressed", function(_, _, amount)
+        if MR:_AddItem(item, link, amount) then
+          editBox:SetDisabled(true)
+          self:UpdateWindow(numItems, totalItems)
+        end
+      end)
+      inputGroup:AddChild(editBox)
+    end
+    scrollFrame:AddChild(inputGroup)
   end
 end
 
@@ -275,12 +334,5 @@ function MR:Debug(msg)
       msg = "nil"
     end
     self:Print("|cFFFFFF00" .. msg .. "|r")
-  end
-end
-
-function MR:DebugTable(tbl, header)
-  self:Debug(header)
-  for i=1,#tbl do
-    self:Debug(i .. LibJSON.Serialize(tbl[i]))
   end
 end

@@ -8,5 +8,6 @@ Toggle pop-up enable: /mr enabled on/off
                          #EP# Is the EP value assigned to that item
       Remove an item: /mr remove [ITEM]
                          [ITEM] Must be an item link or a text item name with no spaces
+   Removes all items: /mr removeAll
       List all items: /mr list
 </pre>
