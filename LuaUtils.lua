@@ -11,6 +11,12 @@ function keys(tb)
   return ks
 end
 
+function sortedKeys(tb, sortFunction)
+  local sorted = keys(tb)
+  table.sort(sorted, sortFunction)
+  return sorted
+end
+
 function getKeysSortedByValue(tbl, sortFunction)
   local keys = keys(tbl)
   table.sort(keys, function(a, b)

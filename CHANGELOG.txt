@@ -1,1 +1,8 @@
-1.0 - Initial release for Shides<Pagle>
+1.0.0 - Initial release for Shides<Pagle>
+
+1.1.0 - Grouping items by sender
+
+1.2.1 - Looting items from mail when EP is applied
+
+1.3.0 - Alphabetizing sender groups, unknown value items
+        Filtering out auction items

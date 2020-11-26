@@ -255,8 +255,9 @@ function MR:UpdateWindow(numItems, totalItems)
   --
   self:Debug("numItems=" .. numItems .. ", totalItems=" .. totalItems)
   for mailboxIndex=1, numItems do
-    local packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, hasItem, wasRead, wasReturned, _ = GetInboxHeaderInfo(mailboxIndex);
-    if hasItem and sender and not wasReturned then
+    local packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, hasItem, wasRead, wasReturned, _ = GetInboxHeaderInfo(mailboxIndex)
+    local isAuction = not GetInboxInvoiceInfo(mailboxIndex) == nil
+    if hasItem and sender and not wasReturned and not isAuction then
       for mailIndex=1, ATTACHMENTS_MAX_RECEIVE do
         local link = GetInboxItemLink(mailboxIndex, mailIndex)
         if link then
@@ -274,7 +275,6 @@ function MR:UpdateWindow(numItems, totalItems)
                 buttonGroup = AceGUI:Create("InlineGroup")
                 buttonGroup:SetTitle(sender)
                 buttonGroups[sender] = buttonGroup
-                scrollFrame:AddChild(buttonGroup)
               end
               local button = AceGUI:Create("Button")
               button:SetText(L["ApplyButton"](amount, count, name))
@@ -299,11 +299,17 @@ function MR:UpdateWindow(numItems, totalItems)
   end
 
   --
+  -- Add the (alpha sorted) inputs
+  --
+  for _, k in ipairs(sortedKeys(buttonGroups)) do
+    scrollFrame:AddChild(buttonGroups[k])
+  end
+
+  --
   -- Add in inputs for No EP value
   --
   if next(noValueItems) ~= nil then
-    local inputGroup = AceGUI:Create("InlineGroup")
-    inputGroup:SetTitle(L["Unknown Item Values"])
+    local unknownValues = {}
     for item,link in pairs(noValueItems) do
       local editBox = AceGUI:Create("EditBox")
       editBox:SetText("")
@@ -322,7 +328,13 @@ function MR:UpdateWindow(numItems, totalItems)
           self:UpdateWindow(numItems, totalItems)
         end
       end)
-      inputGroup:AddChild(editBox)
+      unknownValues[item] = editBox
+    end
+
+    local inputGroup = AceGUI:Create("InlineGroup")
+    inputGroup:SetTitle(L["Unknown Item Values"])
+    for _, k in ipairs(sortedKeys(unknownValues)) do
+      inputGroup:AddChild(unknownValues[k])
     end
     scrollFrame:AddChild(inputGroup)
   end
