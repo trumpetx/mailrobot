@@ -1,5 +1,5 @@
 ## Interface: 11306
-## Version: 1.3.2
+## Version: 1.4.0
 ## Title: Mail Robot
 ## Notes: Get Mail -> Do EPGP Stuff
 ## Author: TrumpetX

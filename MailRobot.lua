@@ -4,6 +4,15 @@ local L = LibStub("AceLocale-3.0"):GetLocale("MailRobot")
 local AceGUI = LibStub("AceGUI-3.0")
 local LibJSON = LibStub("LibJSON-1.0")
 
+StaticPopupDialogs["MR_BAGS_FULL"] = {
+  text = L["Your bags are full"],
+  button1 = L["Ok"],
+  timeout = 0,
+  whileDead = false,
+  hideOnEscape = true,
+  preferredIndex = 3,
+}
+
 local options = {
   name = L["Mail Robot"],
   handler = MR,
@@ -41,6 +50,22 @@ local options = {
       validate = "ValidateRemoveItem",
       guiHidden = true,
     },
+    clear = {
+      type = "input",
+      name = L["Clear character's total points"],
+      desc = L["Resets a character's total points to zero"],
+      get = false,
+      set = "ClearTotal",
+      validate = "ValidateClearTotal",
+      guiHidden = true,
+    },
+    clearAll = {
+      type = "execute",
+      name = L["Clear all character's total points"],
+      desc = L["Resets all character's total points to zero"],
+      func = "ClearAllTotal",
+      guiHidden = true,
+    },
     list = {
       type = "execute",
       name = L["List Item Values"],
@@ -62,6 +87,7 @@ local defaults = {
     debug = false,
     itemValues = {},
     enabled = true,
+    playerPoints = {},
   }
 }
 
@@ -88,8 +114,31 @@ function MR:SetEnabled(info, value)
   self:Print(L["MailRobot window "] .. L[value and "enabled" or "disabled"])
 end
 
+function MR:ValidateClearTotal(a, args)
+  local character = self:GetArgs(args, 1)
+  if character == nil then
+    return L["usage: /mr clearTotal [character]"]
+  end
+  return true
+end
+
+function MR:ClearTotal(a, args)
+  local character = self:GetArgs(args, 1)
+  self.db.profile.playerPoints[character] = 0
+  if self.frame ~= nil then
+    self:MAIL_INBOX_UPDATE("MAIL_INBOX_UPDATE")
+  end
+end
+
+function MR:ClearAllTotal(a, args)
+  self.db.profile.playerPoints = {}
+  if self.frame ~= nil then
+    self:MAIL_INBOX_UPDATE("MAIL_INBOX_UPDATE")
+  end
+end
+
 function MR:ValidateRemoveItem(a, args)
-  local item, amount = self:GetArgs(args, 1)
+  local item = self:GetArgs(args, 1)
   if item == nil then
     return L["usage: /mr remove [item]"]
   end
@@ -147,6 +196,7 @@ function MR:OnEnable()
   self.firstOpen = true
   self.isShown = false
   self.canIncEp = false
+  if self.db.profile.playerPoints == nil then self.db.profile.playerPoints = {} end
   LibStub("AceConfig-3.0"):RegisterOptionsTable("MailRobot", options)
   self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("MailRobot", L["Mail Robot"])
   self:RegisterChatCommand(L["mr"], "ChatCommand")
@@ -175,6 +225,8 @@ function MR:ChatCommand(input)
       InterfaceOptionsFrame_OpenToCategory(self.optionsFrame)
     end
     InterfaceOptionsFrame_OpenToCategory(self.optionsFrame)
+  elseif input == "help" then
+    LibStub("AceConfigCmd-3.0"):HandleCommand(L["mr"], "MailRobot", "")
   else
     LibStub("AceConfigCmd-3.0"):HandleCommand(L["mr"], "MailRobot", input)
   end
@@ -248,6 +300,15 @@ end
 function MR:UpdateWindow(numItems, totalItems)
   local scrollFrame = self.frame.scrollFrame
   scrollFrame:ReleaseChildren()
+  -- Add "always" button(s)
+  local button = AceGUI:Create("Button")
+  button:SetText(L["Reset All Totals"])
+  button:SetFullWidth(true)
+  button:SetHeight(16)
+  button:SetCallback("OnClick", function() self:ClearAllTotal(nil, "") end)
+  scrollFrame:AddChild(button)
+
+
   local noValueItems = {}
   local buttonGroups = {}
   --
@@ -272,16 +333,41 @@ function MR:UpdateWindow(numItems, totalItems)
             if amount > 0 then
               local buttonGroup = buttonGroups[sender]
               if buttonGroup == nil then
-                buttonGroup = AceGUI:Create("InlineGroup")
-                buttonGroup:SetTitle(sender)
+                buttonGroup = AceGUI:Create("SimpleGroup")
+                local playerPoints = self.db.profile.playerPoints[sender];
+                if playerPoints == nil then playerPoints = 0 end
+
+                local resetButton = AceGUI:Create("Button")
+                resetButton:SetText(L["Reset Total"])
+                resetButton:SetWidth(95)
+                resetButton:SetCallback("OnClick", function() self:ClearTotal(nil, sender) end)
+
+                local name = LibStub("AceGUI-3.0"):Create("Label")
+                name:SetText(sender .. "  [ " ..  playerPoints .." ]")
+                fontName, fontHeight, fontFlags = name.label:GetFont()
+                name:SetHeight(fontHeight + 2)
+                name:SetWidth(170)
+                name:SetFont(fontName, fontHeight + 2, fontFlags)
+
+                local titleBar = AceGUI:Create("SimpleGroup")
+                titleBar:SetFullWidth(true)
+                titleBar:SetHeight(fontHeight + 2)
+                titleBar:AddChild(name)
+                titleBar:AddChild(resetButton)
+                titleBar:SetLayout("Flow")
+
+                buttonGroup:AddChild(titleBar)
                 buttonGroups[sender] = buttonGroup
               end
               local button = AceGUI:Create("Button")
               button:SetText(L["ApplyButton"](amount, count, name))
               button:SetFullWidth(true)
               button:SetCallback("OnClick", function()
-                if EPGP:IncEPBy(epgpSender, name, amount, false, false) then
-                  self:Debug("Increased " .. sender .. "'s EP by " .. amount .. " for receipt of " .. count .. " " .. link)
+                if self:OpenBagSlot(itemId) and EPGP:IncEPBy(epgpSender, name, amount, false, false) then
+                  local playerPoints = self.db.profile.playerPoints[sender]
+                  if playerPoints == nil then playerPoints = 0 end
+                  self.db.profile.playerPoints[sender] = playerPoints + amount
+                  self:Debug("Increased " .. sender .. "'s EP by " .. amount .. " T(" .. self.db.profile.playerPoints[sender] .. ")" .. " for receipt of " .. count .. " " .. link)
                   button:SetDisabled(true)
                   TakeInboxItem(mailboxIndex, mailIndex)
                 else
@@ -338,6 +424,24 @@ function MR:UpdateWindow(numItems, totalItems)
     end
     scrollFrame:AddChild(inputGroup)
   end
+end
+
+function MR:OpenBagSlot(item)
+  local itemFamily = GetItemFamily(item)
+  for bagID=0, NUM_BAG_SLOTS do
+    self:Debug("itemType: " .. itemFamily)
+    numberOfFreeSlots, bagItemFamily = GetContainerNumFreeSlots(bagID);
+    if numberOfFreeSlots > 0 then
+      self:Debug("Checking bag: " .. bagID .. ", type: " .. bagItemFamily .. ", freeSlots: " .. numberOfFreeSlots)
+      if (bagItemFamily == 0 or bagItemFamily == itemFamily) then
+        return true
+      end
+    else
+      self:Debug("Bag: " .. bagID .. " does not exist or is full")
+    end
+  end
+  StaticPopup_Show("MR_BAGS_FULL")
+  return false
 end
 
 function MR:Debug(msg)

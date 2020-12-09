@@ -6,3 +6,6 @@
 
 1.3.0 - Alphabetizing sender groups, unknown value items
         Filtering out auction items
+
+1.4.0 - Adding a point total counter for individuals (resetabble) for tracking points given via MailRobot
+      - Added a "Bag is Full" check
