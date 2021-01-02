@@ -317,7 +317,7 @@ function MR:UpdateWindow(numItems, totalItems)
   self:Debug("numItems=" .. numItems .. ", totalItems=" .. totalItems)
   for mailboxIndex=1, numItems do
     local packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, hasItem, wasRead, wasReturned, _ = GetInboxHeaderInfo(mailboxIndex)
-    local isAuction = not GetInboxInvoiceInfo(mailboxIndex) == nil
+    local isAuction = GetInboxInvoiceInfo(mailboxIndex) ~= nil
     if hasItem and sender and not wasReturned and not isAuction then
       for mailIndex=1, ATTACHMENTS_MAX_RECEIVE do
         local link = GetInboxItemLink(mailboxIndex, mailIndex)
