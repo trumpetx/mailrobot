@@ -281,7 +281,7 @@ function MR:CreateWindow()
   end
 
   self.frame = AceGUI:Create("Frame")
-  self.frame:SetWidth(300)
+  self.frame:SetWidth(350)
   self.frame:SetTitle(L["Mail Robot"])
   self.frame:SetCallback("OnClose", function(widget) AceGUI:Release(widget); self.frame = nil end)
   self.frame:SetLayout("Fill")
@@ -308,6 +308,9 @@ function MR:UpdateWindow(numItems, totalItems)
   button:SetCallback("OnClick", function() self:ClearAllTotal(nil, "") end)
   scrollFrame:AddChild(button)
 
+  local scale = .5
+  local imageSize = scale * 36
+  local iconSize = scale * 48
 
   local noValueItems = {}
   local buttonGroups = {}
@@ -361,7 +364,7 @@ function MR:UpdateWindow(numItems, totalItems)
               end
               local button = AceGUI:Create("Button")
               button:SetText(L["ApplyButton"](amount, count, name))
-              button:SetFullWidth(true)
+              button:SetWidth(275)
               button:SetCallback("OnClick", function()
                 if self:OpenBagSlot(itemId) and EPGP:IncEPBy(epgpSender, name, amount, false, false) then
                   local playerPoints = self.db.profile.playerPoints[sender]
@@ -374,7 +377,25 @@ function MR:UpdateWindow(numItems, totalItems)
                   self:Debug("Unable to increase " .. sender .. "'s EP by " .. amount .. " for receipt of " .. count .. " " .. link)
                 end
               end)
-              buttonGroup:AddChild(button)
+              local noPointsButton = AceGUI:Create("Icon")
+              noPointsButton:SetImage("interface\\icons\\inv_gauntlets_04")
+              noPointsButton:SetFullWidth(false)
+              noPointsButton:SetImageSize(imageSize, imageSize)
+              noPointsButton:SetHeight(iconSize)
+              noPointsButton:SetWidth(iconSize)
+              noPointsButton:SetCallback("OnClick", function()
+                if self:OpenBagSlot(itemId) then
+                  noPointsButton:SetDisabled(true)
+                  TakeInboxItem(mailboxIndex, mailIndex)
+                else
+                  self:Debug("Unable to take " .. link .. " from " .. sender)
+                end
+              end)
+              row = AceGUI:Create("SimpleGroup")
+              row:SetLayout("Flow")
+              row:AddChild(button)
+              row:AddChild(noPointsButton)
+              buttonGroup:AddChild(row)
             else
               self:Debug("Value of " .. count .. "x" .. name .. " is 0")
             end

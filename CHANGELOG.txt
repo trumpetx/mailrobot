@@ -9,3 +9,5 @@
 
 1.4.0 - Adding a point total counter for individuals (resetabble) for tracking points given via MailRobot
       - Added a "Bag is Full" check
+
+1.5.0 - Adding a "take for no points" icon (gauntlets)
