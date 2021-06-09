@@ -11,3 +11,5 @@
       - Added a "Bag is Full" check
 
 1.5.0 - Adding a "take for no points" icon (gauntlets)
+
+2.0.0 - Updating for TBC
