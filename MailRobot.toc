@@ -1,7 +1,7 @@
 ## Interface: 20501
 ## Interface-Classic: 11307
 ## Interface-BCC: 20501
-## Version: 2.0.0
+## Version: 2.1.0
 ## Title: Mail Robot
 ## Notes: Get Mail -> Do EPGP Stuff
 ## Author: TrumpetX

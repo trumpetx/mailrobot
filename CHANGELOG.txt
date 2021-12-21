@@ -13,3 +13,5 @@
 1.5.0 - Adding a "take for no points" icon (gauntlets)
 
 2.0.0 - Updating for TBC
+
+2.1.0 - Adding "Max Points" which works in conjunction with "Reset Totals" such that you cannot give more than "Max" until you reset the totals again.
