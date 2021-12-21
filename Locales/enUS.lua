@@ -12,8 +12,8 @@ L["mailrobot"] = true
 L["AddonEnabled"] = function(X,Y)
 	return 'version ' .. X .. ' by |cFF00FF00' .. Y .. '|r loaded'
 end
-L["ApplyButton"] = function(amount, count, name)
-	return amount .. " EP for " .. count .. " " .. name
+L["ApplyButton"] = function(amount, difference, count, name)
+	return amount .. (difference > 0 and "(" .. difference .. ")" or "") .. " EP for " .. count .. " " .. name
 end
 L["Add a item"] = true
 L["Adds a item value to the database"] = true
@@ -37,3 +37,6 @@ L["Clear all character's total points"] = true
 L["Resets all character's total points to zero"] = true
 L["Reset All Totals"] = true
 L["Reset Total"] = true
+L["Maximum Points"] = true
+L["Set Maximum Points (until reset)"] = true
+L["usage: /mr maxPoints ##"] = true

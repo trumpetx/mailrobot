@@ -32,6 +32,14 @@ local options = {
       get = "GetDebugMode",
       set = "SetDebugMode",
     },
+    maxPoints = {
+      type = "input",
+      name = L["Maximum Points"],
+      desc = L["Set Maximum Points (until reset)"],
+      get = "GetMaxPoints",
+      set = "SetMaxPoints",
+      validate = "ValidateMaxPoints"
+    },
     add = {
       type = "input",
       name = L["Add a item"],
@@ -88,12 +96,30 @@ local defaults = {
     itemValues = {},
     enabled = true,
     playerPoints = {},
+    maxPoints = 0,
   }
 }
 
 function MR:OnInitialize()
   self.db = LibStub("AceDB-3.0"):New("MailRobotDB", defaults, true)
   self.frame = nil
+end
+
+function MR:GetMaxPoints(info)
+  return self.db.profile.maxPoints
+end
+
+function MR:SetMaxPoints(info, value)
+  self.db.profile.maxPoints = value
+  self:Debug(L["Maximum Points"] .. ": " .. self.db.profile.maxPoints)
+end
+
+function MR:ValidateMaxPoints(a, args)
+  local amount = self:GetArgs(args, 1)
+  if tonumber(amount) == nil then
+    return L["usage: /mr maxPoints ##"]
+  end
+  return true
 end
 
 function MR:GetDebugMode(info)
@@ -135,6 +161,7 @@ function MR:ClearAllTotal(a, args)
   if self.frame ~= nil then
     self:MAIL_INBOX_UPDATE("MAIL_INBOX_UPDATE")
   end
+  self:Debug("Player points reset, max points = " .. self:GetMaxPoints())
 end
 
 function MR:ValidateRemoveItem(a, args)
@@ -331,9 +358,18 @@ function MR:UpdateWindow(numItems, totalItems)
             noValueItems[name] = link;
           else
             self:Debug(name .. " has a value of " .. amountPerItem)
-            local amount = amountPerItem * count
+            local amount = round(amountPerItem * count)
             local epgpSender = EPGP:GetFullCharacterName(sender)
             if amount > 0 then
+              local maxPoints = tonumber(self:GetMaxPoints()) or 0
+              local difference = 0
+              local playerPoints = self.db.profile.playerPoints[sender]
+              if playerPoints == nil then playerPoints = 0 end
+              if(maxPoints > 0 and (playerPoints + amount) >= maxPoints) then
+                local originalAmount = amount
+                amount = round(maxPoints - playerPoints)
+                difference = round(originalAmount - amount)
+              end
               local buttonGroup = buttonGroups[sender]
               if buttonGroup == nil then
                 buttonGroup = AceGUI:Create("SimpleGroup")
@@ -363,12 +399,12 @@ function MR:UpdateWindow(numItems, totalItems)
                 buttonGroups[sender] = buttonGroup
               end
               local button = AceGUI:Create("Button")
-              button:SetText(L["ApplyButton"](amount, count, name))
+              button:SetText(L["ApplyButton"](amount, difference, count, name))
               button:SetWidth(275)
               button:SetCallback("OnClick", function()
-                if self:OpenBagSlot(itemId) and EPGP:IncEPBy(epgpSender, name, amount, false, false) then
-                  local playerPoints = self.db.profile.playerPoints[sender]
-                  if playerPoints == nil then playerPoints = 0 end
+                if maxPoints > 0 and amount == 0 then
+                  self:Debug("Unable to increase " .. sender .. "'s EP by " .. difference .. ".  They are at max EP.")
+                elseif self:OpenBagSlot(itemId) and EPGP:IncEPBy(epgpSender, name, amount, false, false) then
                   self.db.profile.playerPoints[sender] = playerPoints + amount
                   self:Debug("Increased " .. sender .. "'s EP by " .. amount .. " T(" .. self.db.profile.playerPoints[sender] .. ")" .. " for receipt of " .. count .. " " .. link)
                   button:SetDisabled(true)
@@ -424,7 +460,7 @@ function MR:UpdateWindow(numItems, totalItems)
       editBox:DisableButton(false)
       editBox:SetCallback("OnTextChanged", function(_, _, txt)
         if txt == nil then return end
-        local match = string.match(txt, '[0-9]*')
+        local match = string.match(txt, '[0-9.]*')
         if match ~= txt then
           editBox:SetText(match)
         end
