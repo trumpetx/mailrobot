@@ -14,12 +14,18 @@ jobs:
       GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Clone project
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Create Classic Package Classic
-        uses: BigWigsMods/packager@master
+        uses: BigWigsMods/packager@v2
         with:
           args: -g classic
       - name: Create Burning Crusade Classic Package
-        uses: BigWigsMods/packager@master
+        uses: BigWigsMods/packager@v2
         with:
           args: -g bcc
+      - name: Create Wrath Classic Package
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -g wrath
